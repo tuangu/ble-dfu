@@ -1,0 +1,11 @@
+.vscode/
+
+build/
+_build/
+
+# Private key
+bootloader/*.pem
+
+# SDK and Softdevice
+nrf_sdk_15.3.0/
+s140_nrf52_6.1.1/
