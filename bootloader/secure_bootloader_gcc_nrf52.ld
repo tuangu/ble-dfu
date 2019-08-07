@@ -5,7 +5,7 @@ GROUP(-lgcc -lc -lnosys)
 
 MEMORY
 {
-  FLASH (rx) : ORIGIN = 0xf8000, LENGTH = 0x6000
+  FLASH (rx) : ORIGIN = 0xf1000, LENGTH = 0xd000
   RAM (rwx) :  ORIGIN = 0x200057b8, LENGTH = 0x3a848
   uicr_bootloader_start_address (r) : ORIGIN = 0x00000FF8, LENGTH = 0x4
   bootloader_settings_page (r) : ORIGIN = 0x000FF000, LENGTH = 0x1000
@@ -113,17 +113,17 @@ SECTIONS
     KEEP(*(.nrf_balloc))
     PROVIDE(__stop_nrf_balloc = .);
   } > FLASH
-  .sdh_ble_observers :
-  {
-    PROVIDE(__start_sdh_ble_observers = .);
-    KEEP(*(SORT(.sdh_ble_observers*)))
-    PROVIDE(__stop_sdh_ble_observers = .);
-  } > FLASH
   .log_backends :
   {
     PROVIDE(__start_log_backends = .);
     KEEP(*(SORT(.log_backends*)))
     PROVIDE(__stop_log_backends = .);
+  } > FLASH
+  .sdh_ble_observers :
+  {
+    PROVIDE(__start_sdh_ble_observers = .);
+    KEEP(*(SORT(.sdh_ble_observers*)))
+    PROVIDE(__stop_sdh_ble_observers = .);
   } > FLASH
   .sdh_req_observers :
   {

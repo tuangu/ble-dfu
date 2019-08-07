@@ -1,6 +1,6 @@
-PROJECT_NAME     := secure_bootloader_ble_s140_pca10056
+PROJECT_NAME     := secure_bootloader_ble_s140_pca10056_debug
 TARGETS          := nrf52840_xxaa_s140
-OUTPUT_DIRECTORY := _build
+OUTPUT_DIRECTORY := build
 
 SDK_ROOT := ../nrf_sdk_15.3.0
 PROJ_DIR := .
@@ -11,6 +11,9 @@ $(OUTPUT_DIRECTORY)/nrf52840_xxaa_s140.out: \
 # Source files common to all targets
 SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52840.S \
+  $(SDK_ROOT)/components/libraries/log/src/nrf_log_backend_rtt.c \
+  $(SDK_ROOT)/components/libraries/log/src/nrf_log_backend_serial.c \
+  $(SDK_ROOT)/components/libraries/log/src/nrf_log_default_backends.c \
   $(SDK_ROOT)/components/libraries/log/src/nrf_log_frontend.c \
   $(SDK_ROOT)/components/libraries/log/src/nrf_log_str_formatter.c \
   $(SDK_ROOT)/components/libraries/util/app_error_weak.c \
@@ -49,12 +52,14 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/crypto/nrf_crypto_hash.c \
   $(SDK_ROOT)/components/libraries/crypto/nrf_crypto_init.c \
   $(SDK_ROOT)/components/libraries/crypto/nrf_crypto_shared.c \
-  $(PROJ_DIR)/public_key.c \
+  $(PROJ_DIR)/config/dfu_public_key.c \
   $(PROJ_DIR)/main.c \
   $(SDK_ROOT)/components/libraries/bootloader/dfu/nrf_dfu_svci.c \
   $(SDK_ROOT)/components/libraries/bootloader/dfu/nrf_dfu_svci_handler.c \
   $(SDK_ROOT)/components/libraries/svc/nrf_svc_handler.c \
-  $(SDK_ROOT)/components/ble/common/ble_srv_common.c \
+  $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
+  $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
+  $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_printf.c \
   $(SDK_ROOT)/components/libraries/bootloader/nrf_bootloader.c \
   $(SDK_ROOT)/components/libraries/bootloader/nrf_bootloader_app_start.c \
   $(SDK_ROOT)/components/libraries/bootloader/nrf_bootloader_app_start_final.c \
@@ -77,6 +82,7 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/bootloader/dfu/nrf_dfu_utils.c \
   $(SDK_ROOT)/components/libraries/bootloader/dfu/nrf_dfu_validation.c \
   $(SDK_ROOT)/components/libraries/bootloader/dfu/nrf_dfu_ver_validation.c \
+  $(SDK_ROOT)/components/ble/common/ble_srv_common.c \
   $(SDK_ROOT)/components/libraries/crypto/backend/oberon/oberon_backend_chacha_poly_aead.c \
   $(SDK_ROOT)/components/libraries/crypto/backend/oberon/oberon_backend_ecc.c \
   $(SDK_ROOT)/components/libraries/crypto/backend/oberon/oberon_backend_ecdh.c \
@@ -106,6 +112,7 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/libraries/log/src \
   $(SDK_ROOT)/components/libraries/bootloader/dfu \
   $(SDK_ROOT)/components/ble/common \
+  $(SDK_ROOT)/external/segger_rtt \
   $(SDK_ROOT)/components/libraries/delay \
   $(SDK_ROOT)/components/libraries/svc \
   $(SDK_ROOT)/components/libraries/stack_info \
@@ -119,7 +126,7 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/libraries/bootloader \
   $(SDK_ROOT)/components/softdevice/s140/headers \
   $(SDK_ROOT)/components/libraries/crypto \
-  config \
+  $(PROJ_DIR)/config \
   $(SDK_ROOT)/components/libraries/crypto/backend/optiga \
   $(SDK_ROOT)/components/libraries/scheduler \
   $(SDK_ROOT)/external/nrf_cc310_bl/include \
@@ -153,8 +160,10 @@ CFLAGS += $(OPT)
 CFLAGS += -DBLE_STACK_SUPPORT_REQD
 CFLAGS += -DBOARD_PCA10056
 CFLAGS += -DCONFIG_GPIO_AS_PINRESET
+CFLAGS += -DDEBUG_NRF
 CFLAGS += -DFLOAT_ABI_HARD
 CFLAGS += -DNRF52840_XXAA
+CFLAGS += -DNRF_DFU_DEBUG_VERSION
 CFLAGS += -DNRF_DFU_SETTINGS_VERSION=2
 CFLAGS += -DNRF_DFU_SVCI_ENABLED
 CFLAGS += -DNRF_SD_BLE_API_VERSION=6
@@ -180,8 +189,10 @@ ASMFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 ASMFLAGS += -DBLE_STACK_SUPPORT_REQD
 ASMFLAGS += -DBOARD_PCA10056
 ASMFLAGS += -DCONFIG_GPIO_AS_PINRESET
+ASMFLAGS += -DDEBUG_NRF
 ASMFLAGS += -DFLOAT_ABI_HARD
 ASMFLAGS += -DNRF52840_XXAA
+ASMFLAGS += -DNRF_DFU_DEBUG_VERSION
 ASMFLAGS += -DNRF_DFU_SETTINGS_VERSION=2
 ASMFLAGS += -DNRF_DFU_SVCI_ENABLED
 ASMFLAGS += -DNRF_SD_BLE_API_VERSION=6
@@ -244,7 +255,7 @@ flash_softdevice:
 erase:
 	nrfjprog -f nrf52 --eraseall
 
-SDK_CONFIG_FILE := config/sdk_config.h
+SDK_CONFIG_FILE := ../config/sdk_config.h
 CMSIS_CONFIG_TOOL := $(SDK_ROOT)/external_tools/cmsisconfig/CMSIS_Configuration_Wizard.jar
 sdk_config:
 	java -jar $(CMSIS_CONFIG_TOOL) $(SDK_CONFIG_FILE)

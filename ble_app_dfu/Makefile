@@ -1,12 +1,12 @@
-PROJECT_NAME     := ble_app_buttonless_dfu_pca10056_s140
+PROJECT_NAME     := ble_app_dfu_pca10056_s140
 TARGETS          := nrf52840_xxaa
-OUTPUT_DIRECTORY := _build
+OUTPUT_DIRECTORY := build
 
 SDK_ROOT := ../nrf_sdk_15.3.0
 PROJ_DIR := .
 
 $(OUTPUT_DIRECTORY)/nrf52840_xxaa.out: \
-  LINKER_SCRIPT  := ble_app_buttonless_dfu_gcc_nrf52.ld
+  LINKER_SCRIPT  := ble_app_dfu_gcc_nrf52.ld
 
 # Source files common to all targets
 SRC_FILES += \
