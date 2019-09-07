@@ -53,6 +53,7 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/bsp/bsp.c \
   $(SDK_ROOT)/components/libraries/bsp/bsp_btn_ble.c \
   $(PROJ_DIR)/main.c \
+  $(PROJ_DIR)/ble_led.c \
   $(SDK_ROOT)/components/libraries/bootloader/dfu/nrf_dfu_svci.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
@@ -97,6 +98,7 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/toolchain/cmsis/include \
   $(SDK_ROOT)/components/libraries/util \
   config \
+  $(PROJ_DIR) \
   $(SDK_ROOT)/components/ble/common \
   $(SDK_ROOT)/components/libraries/balloc \
   $(SDK_ROOT)/components/ble/peer_manager \
@@ -136,7 +138,7 @@ INC_FOLDERS += \
 LIB_FILES += \
 
 # Optimization flags
-OPT = -Os -g3
+OPT = -O0 -g
 # Uncomment the line below to enable link time optimization
 #OPT += -flto
 

@@ -87,8 +87,10 @@
 #include "nrf_log_default_backends.h"
 #include "nrf_bootloader_info.h"
 
-#define DEVICE_NAME                     "Nordic Buttonless"                         /**< Name of device. Will be included in the advertising data. */
-#define MANUFACTURER_NAME               "NordicSemiconductor"                       /**< Manufacturer. Will be passed to Device Information Service. */
+#include "ble_led.h"
+
+#define DEVICE_NAME                     "SensorNode"                                /**< Name of device. Will be included in the advertising data. */
+#define MANUFACTURER_NAME               "Other"                                     /**< Manufacturer. Will be passed to Device Information Service. */
 #define APP_ADV_INTERVAL                300                                         /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 #define APP_ADV_DURATION                18000                                       /**< The advertising duration (180 seconds) in units of 10 milliseconds. */
 
@@ -115,16 +117,21 @@
 
 #define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
-
 NRF_BLE_GATT_DEF(m_gatt);                                                           /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);                                                             /**< Context for the Queued Write module.*/
 BLE_ADVERTISING_DEF(m_advertising);                                                 /**< Advertising module instance. */
+BLE_LED_SERVICE_DEF(m_led_service);
+APP_TIMER_DEF(m_timer);
+
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                            /**< Handle of the current connection. */
 static void advertising_start(bool erase_bonds);                                    /**< Forward declaration of advertising start function */
 
 // YOUR_JOB: Use UUIDs for service(s) used in your application.
-static ble_uuid_t m_adv_uuids[] = {{BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE}};
+static ble_uuid_t m_adv_uuids[] = {
+    {BLE_LED_SERVICE_UUID, BLE_UUID_TYPE_BLE}
+};
+
 
 /**@brief Handler for shutdown preparation.
  *
@@ -157,11 +164,11 @@ static bool app_shutdown_handler(nrf_pwr_mgmt_evt_t event)
             //{
             //
             //    // Device ready to enter
-            //    uint32_t err_code;
-            //    err_code = sd_softdevice_disable();
-            //    APP_ERROR_CHECK(err_code);
-            //    err_code = app_timer_stop_all();
-            //    APP_ERROR_CHECK(err_code);
+            uint32_t err_code;
+            // err_code = sd_softdevice_disable();
+            // APP_ERROR_CHECK(err_code);
+            err_code = app_timer_stop_all();
+            APP_ERROR_CHECK(err_code);
             //}
             break;
 
@@ -310,6 +317,21 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
 }
 
 
+void timer_handler(void *p_context)
+{
+    uint32_t err_code;
+    bool state;
+    uint8_t led_state;
+    
+    bsp_board_led_invert(BSP_BOARD_LED_2);
+    state = bsp_board_led_state_get(BSP_BOARD_LED_2);
+    led_state = (state == true) ? 1 : 0;
+    
+    err_code = ble_led_state_characteristic_update(&m_led_service, &led_state);
+    APP_ERROR_CHECK(err_code);
+
+}
+
 /**@brief Function for the Timer initialization.
  *
  * @details Initializes the timer module. This creates and starts application timers.
@@ -322,14 +344,8 @@ static void timers_init(void)
     APP_ERROR_CHECK(err_code);
 
     // Create timers.
-
-    /* YOUR_JOB: Create any timers to be used by the application.
-                 Below is an example of how to create a timer.
-                 For every new timer needed, increase the value of the macro APP_TIMER_MAX_TIMERS by
-                 one.
-       uint32_t err_code;
-       err_code = app_timer_create(&m_app_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
-       APP_ERROR_CHECK(err_code); */
+    err_code = app_timer_create(&m_timer, APP_TIMER_MODE_REPEATED, timer_handler);
+    APP_ERROR_CHECK(err_code);
 }
 
 
@@ -405,14 +421,32 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
     }
    }*/
 
+static void on_led_service_event(ble_led_t *p_led, ble_led_evt_t *p_evt)
+{
+    switch (p_evt->evt_type)
+    {
+        case BLE_LED_STATE_EVT_NOTIFICATION_ENABLED:
+            NRF_LOG_INFO("BLE LED: Notification enabled");
+            break;
+
+        case BLE_LED_STATE_EVT_NOTIFICATION_DISABLED:
+            NRF_LOG_INFO("BLE LED: Notification disabled");
+            break;
+
+        default:
+            break;
+    }
+}
+
 
 /**@brief Function for initializing services that will be used by the application.
  */
 static void services_init(void)
 {
-    uint32_t                  err_code;
-    nrf_ble_qwr_init_t        qwr_init  = {0};
-    ble_dfu_buttonless_init_t dfus_init = {0};
+    uint32_t                    err_code;
+    nrf_ble_qwr_init_t          qwr_init  = {0};
+    ble_dfu_buttonless_init_t   dfus_init = {0};
+    ble_led_init_t              led_service_init = {0};
 
     // Initialize Queued Write Module.
     qwr_init.error_handler = nrf_qwr_error_handler;
@@ -425,29 +459,10 @@ static void services_init(void)
     err_code = ble_dfu_buttonless_init(&dfus_init);
     APP_ERROR_CHECK(err_code);
 
-    /* YOUR_JOB: Add code to initialize the services used by the application.
-       uint32_t                           err_code;
-       ble_xxs_init_t                     xxs_init;
-       ble_yys_init_t                     yys_init;
-
-       // Initialize XXX Service.
-       memset(&xxs_init, 0, sizeof(xxs_init));
-
-       xxs_init.evt_handler                = NULL;
-       xxs_init.is_xxx_notify_supported    = true;
-       xxs_init.ble_xx_initial_value.level = 100;
-
-       err_code = ble_bas_init(&m_xxs, &xxs_init);
-       APP_ERROR_CHECK(err_code);
-
-       // Initialize YYY Service.
-       memset(&yys_init, 0, sizeof(yys_init));
-       yys_init.evt_handler                  = on_yys_evt;
-       yys_init.ble_yy_initial_value.counter = 0;
-
-       err_code = ble_yy_service_init(&yys_init, &yy_init);
-       APP_ERROR_CHECK(err_code);
-     */
+    // Initialize LED Service
+    led_service_init.evt_handler = on_led_service_event;
+    err_code = ble_led_init(&m_led_service, &led_service_init);
+    APP_ERROR_CHECK(err_code);
 }
 
 
@@ -578,6 +593,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     {
         case BLE_GAP_EVT_DISCONNECTED:
             // LED indication will be changed when advertising starts.
+            err_code = app_timer_stop(m_timer);
+            APP_ERROR_CHECK(err_code);
             break;
 
         case BLE_GAP_EVT_CONNECTED:
@@ -585,6 +602,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             APP_ERROR_CHECK(err_code);
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
+            APP_ERROR_CHECK(err_code);
+
+            err_code = app_timer_start(m_timer, APP_TIMER_TICKS(2000), NULL);
             APP_ERROR_CHECK(err_code);
             break;
 
