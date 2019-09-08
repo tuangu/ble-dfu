@@ -46,6 +46,34 @@
 #ifdef USE_APP_CONFIG
 #include "app_config.h"
 #endif
+
+// <e> NRFX_RNG_ENABLED - nrfx_rng - RNG peripheral driver
+//==========================================================
+#ifndef NRFX_RNG_ENABLED
+#define NRFX_RNG_ENABLED 1
+#endif
+// <q> NRFX_RNG_CONFIG_ERROR_CORRECTION  - Error correction
+
+
+#ifndef NRFX_RNG_CONFIG_ERROR_CORRECTION
+#define NRFX_RNG_CONFIG_ERROR_CORRECTION 1
+#endif
+
+// <o> NRFX_RNG_CONFIG_IRQ_PRIORITY  - Interrupt priority
+
+// <0=> 0 (highest)
+// <1=> 1
+// <2=> 2
+// <3=> 3
+// <4=> 4
+// <5=> 5
+// <6=> 6
+// <7=> 7
+
+#ifndef NRFX_RNG_CONFIG_IRQ_PRIORITY
+#define NRFX_RNG_CONFIG_IRQ_PRIORITY 7
+#endif
+
 // <h> Board Support 
 
 //==========================================================
@@ -4526,7 +4554,7 @@
 
 // <o> NRF_SDH_BLE_VS_UUID_COUNT - The number of vendor-specific UUIDs. 
 #ifndef NRF_SDH_BLE_VS_UUID_COUNT
-#define NRF_SDH_BLE_VS_UUID_COUNT 2
+#define NRF_SDH_BLE_VS_UUID_COUNT 3
 #endif
 
 // <q> NRF_SDH_BLE_SERVICE_CHANGED  - Include the Service Changed characteristic in the Attribute Table.

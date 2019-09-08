@@ -88,6 +88,8 @@
 #include "nrf_bootloader_info.h"
 
 #include "ble_led.h"
+#include "ble_co2.h"
+#include "fake_co2_sensor.h"
 
 #define DEVICE_NAME                     "SensorNode"                                /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME               "Other"                                     /**< Manufacturer. Will be passed to Device Information Service. */
@@ -121,7 +123,9 @@ NRF_BLE_GATT_DEF(m_gatt);                                                       
 NRF_BLE_QWR_DEF(m_qwr);                                                             /**< Context for the Queued Write module.*/
 BLE_ADVERTISING_DEF(m_advertising);                                                 /**< Advertising module instance. */
 BLE_LED_SERVICE_DEF(m_led_service);
-APP_TIMER_DEF(m_timer);
+BLE_CO2_SERVICE_DEF(m_co2_service);
+APP_TIMER_DEF(m_timer_led);
+APP_TIMER_DEF(m_timer_co2);
 
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                            /**< Handle of the current connection. */
@@ -317,7 +321,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
 }
 
 
-void timer_handler(void *p_context)
+void ble_led_timer_handler(void *p_context)
 {
     uint32_t err_code;
     bool state;
@@ -329,8 +333,19 @@ void timer_handler(void *p_context)
     
     err_code = ble_led_state_characteristic_update(&m_led_service, &led_state);
     APP_ERROR_CHECK(err_code);
-
 }
+
+
+void ble_co2_timer_handler(void *p_context)
+{
+    uint32_t err_code;
+    uint16_t co2_value;
+
+    co2_value = fake_co2_sensor_get();
+    err_code = ble_co2_level_update(&m_co2_service, &co2_value);
+    APP_ERROR_CHECK(err_code);
+}
+
 
 /**@brief Function for the Timer initialization.
  *
@@ -343,8 +358,16 @@ static void timers_init(void)
     uint32_t err_code = app_timer_init();
     APP_ERROR_CHECK(err_code);
 
-    // Create timers.
-    err_code = app_timer_create(&m_timer, APP_TIMER_MODE_REPEATED, timer_handler);
+    // Create LED service timer
+    err_code = app_timer_create(&m_timer_led, 
+                                APP_TIMER_MODE_REPEATED, 
+                                ble_led_timer_handler);
+    APP_ERROR_CHECK(err_code);
+
+    // Create C02 service timer
+    err_code = app_timer_create(&m_timer_co2,
+                                APP_TIMER_MODE_REPEATED,
+                                ble_co2_timer_handler);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -426,11 +449,32 @@ static void on_led_service_event(ble_led_t *p_led, ble_led_evt_t *p_evt)
     switch (p_evt->evt_type)
     {
         case BLE_LED_STATE_EVT_NOTIFICATION_ENABLED:
-            NRF_LOG_INFO("BLE LED: Notification enabled");
+            NRF_LOG_INFO("ble_led: notification enabled");
             break;
 
         case BLE_LED_STATE_EVT_NOTIFICATION_DISABLED:
-            NRF_LOG_INFO("BLE LED: Notification disabled");
+            NRF_LOG_INFO("ble_led: notification disabled");
+            break;
+
+        default:
+            break;
+    }
+}
+
+static void on_co2_service_event(ble_co2_t *p_co2, ble_co2_evt_t *p_evt)
+{
+    switch (p_evt->evt_type)
+    {
+        case BLE_CO2_EVT_NOTI_ENABLED:
+            NRF_LOG_INFO("ble_co2: notification enabled");
+            break;
+
+        case BLE_CO2_EVT_NOTI_DISABLED:
+            NRF_LOG_INFO("ble_co2: notification disabled");
+            break;
+
+        case BLE_CO2_EVT_ALERT_NEW_VALUE:
+            NRF_LOG_INFO("ble_co2: new alert threshold: %u", p_evt->value);
             break;
 
         default:
@@ -447,6 +491,7 @@ static void services_init(void)
     nrf_ble_qwr_init_t          qwr_init  = {0};
     ble_dfu_buttonless_init_t   dfus_init = {0};
     ble_led_init_t              led_service_init = {0};
+    ble_co2_init_t              co2_init = {0};
 
     // Initialize Queued Write Module.
     qwr_init.error_handler = nrf_qwr_error_handler;
@@ -454,14 +499,23 @@ static void services_init(void)
     err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
     APP_ERROR_CHECK(err_code);
 
+    // Initialize dfu service
     dfus_init.evt_handler = ble_dfu_evt_handler;
 
     err_code = ble_dfu_buttonless_init(&dfus_init);
     APP_ERROR_CHECK(err_code);
 
-    // Initialize LED Service
+    // Initialize LED service
     led_service_init.evt_handler = on_led_service_event;
+    
     err_code = ble_led_init(&m_led_service, &led_service_init);
+    APP_ERROR_CHECK(err_code);
+
+    // Initialize CO2 service
+    co2_init.evt_handler = on_co2_service_event;
+    co2_init.alert_threshold = BLE_CO2_DEFAULT_THRESHOLD;
+
+    err_code = ble_co2_init(&m_co2_service, &co2_init);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -525,10 +579,25 @@ static void conn_params_init(void)
  */
 static void application_timers_start(void)
 {
-    /* YOUR_JOB: Start your timers. below is an example of how to start a timer.
-       uint32_t err_code;
-       err_code = app_timer_start(m_app_timer_id, TIMER_INTERVAL, NULL);
-       APP_ERROR_CHECK(err_code); */
+    uint32_t err_code;
+
+    err_code = app_timer_start(m_timer_led, APP_TIMER_TICKS(2000), NULL);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = app_timer_start(m_timer_co2, APP_TIMER_TICKS(5000), NULL);
+    APP_ERROR_CHECK(err_code);
+}
+
+
+static void application_timers_stop(void)
+{
+    uint32_t err_code;
+
+    err_code = app_timer_stop(m_timer_led);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = app_timer_stop(m_timer_co2);
+    APP_ERROR_CHECK(err_code);
 }
 
 
@@ -593,8 +662,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     {
         case BLE_GAP_EVT_DISCONNECTED:
             // LED indication will be changed when advertising starts.
-            err_code = app_timer_stop(m_timer);
-            APP_ERROR_CHECK(err_code);
+            application_timers_stop();
             break;
 
         case BLE_GAP_EVT_CONNECTED:
@@ -604,8 +672,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
 
-            err_code = app_timer_start(m_timer, APP_TIMER_TICKS(2000), NULL);
-            APP_ERROR_CHECK(err_code);
+            application_timers_start();
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
@@ -885,9 +952,10 @@ int main(void)
     conn_params_init();
 
     NRF_LOG_INFO("Buttonless DFU Application started.");
-
+    
+    fake_co2_sensor_init();
+    
     // Start execution.
-    application_timers_start();
     advertising_start(erase_bonds);
 
     // Enter main loop.

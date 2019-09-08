@@ -25,7 +25,7 @@ NRF_SDH_BLE_OBSERVER(_name ## _obs,                        \
                      BLE_LED_BLE_OBSERVER_PRIO,            \
                      ble_led_on_ble_evt, &_name)
 
-// LED Service:                     709E0001-C6D8-45CE-BA5A-406667428FCE
+// LED Service:                709E0001-C6D8-45CE-BA5A-406667428FCE
 //  LED state Characteristic:  709E0002-C6D8-45CE-BA5A-406667428FCE
 
 // The bytes are stored in little-endian format, meaning the
