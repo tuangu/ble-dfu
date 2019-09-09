@@ -88,10 +88,18 @@
 #include "nrf_bootloader_info.h"
 
 #include "ble_led.h"
+
+#if CO2_SERVICE_ENABLED
 #include "ble_co2.h"
 #include "fake_co2_sensor.h"
+#endif
 
+#if CO2_SERVICE_ENABLED
+#define DEVICE_NAME                     "SensorNode.v2"
+#else
 #define DEVICE_NAME                     "SensorNode"                                /**< Name of device. Will be included in the advertising data. */
+#endif
+
 #define MANUFACTURER_NAME               "Other"                                     /**< Manufacturer. Will be passed to Device Information Service. */
 #define APP_ADV_INTERVAL                300                                         /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 #define APP_ADV_DURATION                18000                                       /**< The advertising duration (180 seconds) in units of 10 milliseconds. */
@@ -123,18 +131,21 @@ NRF_BLE_GATT_DEF(m_gatt);                                                       
 NRF_BLE_QWR_DEF(m_qwr);                                                             /**< Context for the Queued Write module.*/
 BLE_ADVERTISING_DEF(m_advertising);                                                 /**< Advertising module instance. */
 BLE_LED_SERVICE_DEF(m_led_service);
-BLE_CO2_SERVICE_DEF(m_co2_service);
 APP_TIMER_DEF(m_timer_led);
+
+#if CO2_SERVICE_ENABLED
+BLE_CO2_SERVICE_DEF(m_co2_service);
 APP_TIMER_DEF(m_timer_co2);
+#endif
 
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                            /**< Handle of the current connection. */
 static void advertising_start(bool erase_bonds);                                    /**< Forward declaration of advertising start function */
 
 // YOUR_JOB: Use UUIDs for service(s) used in your application.
-static ble_uuid_t m_adv_uuids[] = {
-    {BLE_LED_SERVICE_UUID, BLE_UUID_TYPE_BLE}
-};
+// static ble_uuid_t m_adv_uuids[] = {
+//     {BLE_LED_SERVICE_UUID, BLE_UUID_TYPE_BLE}
+// };
 
 
 /**@brief Handler for shutdown preparation.
@@ -335,7 +346,7 @@ void ble_led_timer_handler(void *p_context)
     APP_ERROR_CHECK(err_code);
 }
 
-
+#if CO2_SERVICE_ENABLED
 void ble_co2_timer_handler(void *p_context)
 {
     uint32_t err_code;
@@ -345,6 +356,7 @@ void ble_co2_timer_handler(void *p_context)
     err_code = ble_co2_level_update(&m_co2_service, &co2_value);
     APP_ERROR_CHECK(err_code);
 }
+#endif
 
 
 /**@brief Function for the Timer initialization.
@@ -364,11 +376,13 @@ static void timers_init(void)
                                 ble_led_timer_handler);
     APP_ERROR_CHECK(err_code);
 
+#if CO2_SERVICE_ENABLED
     // Create C02 service timer
     err_code = app_timer_create(&m_timer_co2,
                                 APP_TIMER_MODE_REPEATED,
                                 ble_co2_timer_handler);
     APP_ERROR_CHECK(err_code);
+#endif
 }
 
 
@@ -419,31 +433,6 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
 }
 
 
-/**@brief Function for handling the YYY Service events.
- * YOUR_JOB implement a service handler function depending on the event the service you are using can generate
- *
- * @details This function will be called for all YY Service events which are passed to
- *          the application.
- *
- * @param[in]   p_yy_service   YY Service structure.
- * @param[in]   p_evt          Event received from the YY Service.
- *
- *
-   static void on_yys_evt(ble_yy_service_t     * p_yy_service,
-                          ble_yy_service_evt_t * p_evt)
-   {
-    switch (p_evt->evt_type)
-    {
-        case BLE_YY_NAME_EVT_WRITE:
-            APPL_LOG("[APPL]: charact written with value %s. ", p_evt->params.char_xx.value.p_str);
-            break;
-
-        default:
-            // No implementation needed.
-            break;
-    }
-   }*/
-
 static void on_led_service_event(ble_led_t *p_led, ble_led_evt_t *p_evt)
 {
     switch (p_evt->evt_type)
@@ -461,6 +450,8 @@ static void on_led_service_event(ble_led_t *p_led, ble_led_evt_t *p_evt)
     }
 }
 
+
+#if CO2_SERVICE_ENABLED
 static void on_co2_service_event(ble_co2_t *p_co2, ble_co2_evt_t *p_evt)
 {
     switch (p_evt->evt_type)
@@ -481,6 +472,7 @@ static void on_co2_service_event(ble_co2_t *p_co2, ble_co2_evt_t *p_evt)
             break;
     }
 }
+#endif
 
 
 /**@brief Function for initializing services that will be used by the application.
@@ -491,7 +483,9 @@ static void services_init(void)
     nrf_ble_qwr_init_t          qwr_init  = {0};
     ble_dfu_buttonless_init_t   dfus_init = {0};
     ble_led_init_t              led_service_init = {0};
+#if CO2_SERVICE_ENABLED
     ble_co2_init_t              co2_init = {0};
+#endif
 
     // Initialize Queued Write Module.
     qwr_init.error_handler = nrf_qwr_error_handler;
@@ -511,12 +505,14 @@ static void services_init(void)
     err_code = ble_led_init(&m_led_service, &led_service_init);
     APP_ERROR_CHECK(err_code);
 
+#if CO2_SERVICE_ENABLED
     // Initialize CO2 service
     co2_init.evt_handler = on_co2_service_event;
     co2_init.alert_threshold = BLE_CO2_DEFAULT_THRESHOLD;
 
     err_code = ble_co2_init(&m_co2_service, &co2_init);
     APP_ERROR_CHECK(err_code);
+#endif
 }
 
 
@@ -584,8 +580,10 @@ static void application_timers_start(void)
     err_code = app_timer_start(m_timer_led, APP_TIMER_TICKS(2000), NULL);
     APP_ERROR_CHECK(err_code);
 
+#if CO2_SERVICE_ENABLED
     err_code = app_timer_start(m_timer_co2, APP_TIMER_TICKS(5000), NULL);
     APP_ERROR_CHECK(err_code);
+#endif
 }
 
 
@@ -596,8 +594,10 @@ static void application_timers_stop(void)
     err_code = app_timer_stop(m_timer_led);
     APP_ERROR_CHECK(err_code);
 
+#if CO2_SERVICE_ENABLED
     err_code = app_timer_stop(m_timer_co2);
     APP_ERROR_CHECK(err_code);
+#endif
 }
 
 
@@ -661,13 +661,13 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_DISCONNECTED:
-            // LED indication will be changed when advertising starts.
             application_timers_stop();
             break;
 
         case BLE_GAP_EVT_CONNECTED:
             err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
             APP_ERROR_CHECK(err_code);
+
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
@@ -833,10 +833,10 @@ static void advertising_init(void)
     memset(&init, 0, sizeof(init));
 
     init.advdata.name_type               = BLE_ADVDATA_FULL_NAME;
-    init.advdata.include_appearance      = true;
+    init.advdata.include_appearance      = false;
     init.advdata.flags                   = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-    init.advdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
-    init.advdata.uuids_complete.p_uuids  = m_adv_uuids;
+    // init.advdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
+    // init.advdata.uuids_complete.p_uuids  = m_adv_uuids;
 
     advertising_config_get(&init.config);
 
@@ -951,10 +951,12 @@ int main(void)
     services_init();
     conn_params_init();
 
-    NRF_LOG_INFO("Buttonless DFU Application started.");
-    
+    NRF_LOG_INFO("SensorNode application started.");
+
+#if CO2_SERVICE_ENABLED
     fake_co2_sensor_init();
-    
+#endif    
+
     // Start execution.
     advertising_start(erase_bonds);
 
