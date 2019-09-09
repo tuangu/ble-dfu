@@ -1,0 +1,44 @@
+nRF Connect, 2019-09-09
+DfuTarg (C7:53:BC:96:BE:E6)
+I	21:01:16.878	[Server] Server started
+V	21:01:16.911	Unknown Service (0000aaa0-0000-1000-8000-aabbccddeeff)
+- Unknown Characteristic [N R] (0000aaa1-0000-1000-8000-aabbccddeeff)
+ Client Characteristic Configuration (0x2902)
+ Unknown Descriptor (0000aab0-0000-1000-8000-aabbccddeeff)
+ Characteristic User Description (0x2901)
+ Characteristic Presentation Format (0x2904)
+- Unknown Characteristic [I W WNR] (0000aaa2-0000-1000-8000-aabbccddeeff)
+ Client Characteristic Configuration (0x2902)
+Current Time Service (0x1805)
+- Current Time [N R] (0x2A2B)
+ Client Characteristic Configuration (0x2902)
+- Local Time Information [R] (0x2A0F)
+D	21:01:16.911	[Server callback] Connection state changed with status: 0 and new state: CONNECTED (2)
+I	21:01:16.911	[Server] Device with address C7:53:BC:96:BE:E6 connected
+V	21:01:17.011	Connecting to C7:53:BC:96:BE:E6...
+D	21:01:17.012	gatt = device.connectGatt(autoConnect = false, TRANSPORT_LE, opportunistic = true, preferred PHY = LE 1M) (hidden)
+D	21:01:17.098	[Callback] Connection state changed with status: 0 and new state: CONNECTED (2)
+I	21:01:17.098	Connected to C7:53:BC:96:BE:E6
+V	21:01:17.197	Discovering services...
+D	21:01:17.197	gatt.discoverServices()
+I	21:01:17.248	Connection parameters updated (interval: 15.0ms, latency: 0, timeout: 6000ms)
+I	21:01:17.529	Connection parameters updated (interval: 7.5ms, latency: 0, timeout: 5000ms)
+D	21:01:17.608	[Callback] Services discovered with status: 0
+I	21:01:17.608	Services discovered
+V	21:01:17.635	Generic Access (0x1800)
+- Device Name [R W] (0x2A00)
+- Appearance [R] (0x2A01)
+- Peripheral Preferred Connection Parameters [R] (0x2A04)
+- Central Address Resolution [R] (0x2AA6)
+Generic Attribute (0x1801)
+Secure DFU Service (0xFE59)
+- DFU Packet [WNR] (8ec90002-f315-4f60-9fb8-838830daea50)
+- DFU Control Point [N W] (8ec90001-f315-4f60-9fb8-838830daea50)
+ Client Characteristic Configuration (0x2902)
+I	21:01:17.697	Connection parameters updated (interval: 15.0ms, latency: 0, timeout: 6000ms)
+D	21:01:31.846	[Server callback] Connection state changed with status: 0 and new state: DISCONNECTED (0)
+I	21:01:31.846	[Server] Device disconnected
+D	21:01:31.886	[Callback] Connection state changed with status: 19 and new state: DISCONNECTED (0)
+W	21:01:31.887	Connection terminated by peer (status 19)
+I	21:01:31.887	Disconnected
+D	21:01:31.890	[Broadcast] Action received: android.bluetooth.device.action.ACL_DISCONNECTED
