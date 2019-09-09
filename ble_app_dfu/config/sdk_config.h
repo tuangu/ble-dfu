@@ -47,6 +47,8 @@
 #include "app_config.h"
 #endif
 
+#define CO2_SERVICE_ENABLED 0
+
 // <e> NRFX_RNG_ENABLED - nrfx_rng - RNG peripheral driver
 //==========================================================
 #ifndef NRFX_RNG_ENABLED
