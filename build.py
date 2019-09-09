@@ -56,6 +56,8 @@ parser.add_argument("-m", "--merge", help="merge application, bootloader, and so
                     action="store_true")
 parser.add_argument("-d", "--dry", help="print the configuration",
                     action="store_true")
+parser.add_argument("-f", "--flash", help="flash the merged hex to the target",
+                    action="store_true")
 args = parser.parse_args()
 
 # Configuration file
@@ -119,9 +121,6 @@ def generate_dfu_package():
     """
     print("{}: generating DFU update package".format(__file__))
 
-    if not args.app:
-        return None
-
     # Create the zip file
     # nrfutil pkg generate --hw-version 52 --application-version 1
     # --application application.hex --sd-req 0x98 --softdevice softdevice.hex
@@ -159,6 +158,8 @@ def generate_bl_settings():
     # nrfutil settings generate --family NRF52 --application yourApplication.hex
     # --application-version 0 --bootloader-version 0 --bl-settings-version 1 bootloader_setting.hex
     nrfutil_args = ['nrfutil', 'settings', 'generate', '--family', 'NRF52840']
+    nrfutil_args.append('--softdevice')
+    nrfutil_args.append((sd_dir / sd_target).as_posix())
     nrfutil_args.append('--application')
     nrfutil_args.append((app_dir / output_dir / app_target).as_posix())
     nrfutil_args.append('--application-version')
@@ -228,6 +229,26 @@ def merge_hex():
         raise
 
 
+def flash():
+    """
+    Flash the merged firmware to the target
+    """
+
+    # nrfjprog -f nrf52 --program $(SDK_ROOT)/components/softdevice/s140/hex/s140_nrf52_6.1.1_softdevice.hex --sectorerase
+    flash_args = ['nrfjprog', '-f', 'nrf52']
+    flash_args.append('--program')
+    flash_args.append((output_dir / merged_target).as_posix())
+    flash_args.append('--sectorerase')
+    flash_args.append('--reset')
+
+    try:
+        ret = subprocess.run(
+            flash_args, capture_output=True, check=True, text=True)
+        print(ret.stdout)
+    except subprocess.CalledProcessError as error:
+        print(error.stderr, file=sys.stderr)
+        raise
+
 
 if __name__ == "__main__":
     if args.dry:
@@ -237,7 +258,11 @@ if __name__ == "__main__":
     init()
     build_binary()
 
+    if args.app:
+        generate_dfu_package()
+
     if args.merge:
         merge_hex()
-    else:
-        generate_dfu_package()
+
+    if args.flash:
+        flash()
